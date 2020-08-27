@@ -7,22 +7,32 @@ from django.contrib import messages
 from .forms import NewUserForm
 
 def single_slug(request, single_slug):
+    # first check to see if the url is in categories.
+
     categories = [c.category_slug for c in TutorialCategory.objects.all()]
     if single_slug in categories:
         matching_series = TutorialSeries.objects.filter(tutorial_category__category_slug=single_slug)
+        series_urls = {}
 
-        series_urls={}
         for m in matching_series.all():
             part_one = Tutorial.objects.filter(tutorial_series__tutorial_series=m.tutorial_series).earliest("tutorial_published")
             series_urls[m] = part_one.tutorial_slug
 
-        return render(request,
-                      "main/category.html",
-                      {"part_ones": series_urls}) 
+        return render(request=request,
+                      template_name='main/category.html',
+                      context={"tutorial_series": matching_series, "part_ones": series_urls})
     
     tutorials = [t.tutorial_slug for t in Tutorial.objects.all()]
+
     if single_slug in tutorials:
-        return HttpResponse(f"{single_slug} is a tutorial!!")
+        this_tutorial = Tutorial.objects.get(tutorial_slug=single_slug)
+        tutorials_from_series = Tutorial.objects.filter(tutorial_series__tutorial_series=this_tutorial.tutorial_series).orderby("tutorial_published")
+        this_tutorial_idx = list(tutorials_from_series.index(this_tutorial))
+        return render(request = request,
+                      template_name='main/tutorial.html',
+                      context = {"tutorial": this_tutorial,
+                                 "sidebar": tutorials_from_series,
+                                 "this_tutorial_idx": this_tutorial_idx})
     
     return HttpResponse(f"{single_slug} does not correspond to anything.")
 
